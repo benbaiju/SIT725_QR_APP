@@ -2,6 +2,157 @@
 
 QR-based restaurant menu web application for SIT725.
 
+## Docker Deployment
+
+This repository is containerised with Docker Compose. The full application runs end-to-end: **frontend (Nginx)**, **backend (Node/Express)**, and **MongoDB**.
+
+### Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine + Docker Compose v2)
+- Node.js 18+ (only needed to run the helper script `docker-env.js` before Compose starts)
+- Git (to clone this repository)
+
+### Get the project
+
+Clone the repository and open the project folder:
+
+```bash
+git clone <https://github.com/benbaiju/SIT725_QR_APP.git>
+cd SIT725_QR_APP
+```
+
+All commands below are run from the **repository root**.
+
+### Configuration
+
+Sensitive values are **not** committed. Use `.env` at the project root (gitignored).
+
+1. Copy the example file (if `.env` does not exist yet):
+
+```bash
+cp .env.example .env
+```
+
+2. Edit `.env` and set `JWT_SECRET` to any non-empty secret string (required for login). Other defaults in `.env.example` work for Docker Compose:
+
+| Variable | Purpose |
+|----------|---------|
+| `MONGO_URI` | MongoDB inside Compose (`mongodb://mongodb:27017/sit725_qr_app`) |
+| `JWT_SECRET` | Signs login tokens — **you must set this** |
+| `BASE_URL` | Host used when generating table QR codes (see below) |
+
+`docker-env.js` behaves in two steps:
+
+1. **If `.env` does not exist** — it copies `.env.example` to `.env`, so all required variables (`NODE_ENV`, `MONGO_URI`, `JWT_SECRET`, `BASE_URL`) are present.
+2. **If `.env` already exists** — it updates **only** the `BASE_URL` line and leaves `JWT_SECRET`, `MONGO_URI`, and `NODE_ENV` unchanged.
+
+You should still set `JWT_SECRET` in `.env` before logging in (the value from `.env.example` is a placeholder until you replace it).
+
+- Default `BASE_URL`: `http://localhost:8080` (browser on the same machine)
+- With `--local-ip`: your LAN IP, e.g. `http://192.168.0.79:8080` (QR scanning from a phone on the same Wi‑Fi)
+
+**Using localhost only:** If you plan to run and test the application on the same computer, please use the default commands below (`docker:start` or `docker:start:seed`). The `:local-ip` scripts are not required in that case.
+
+**Using your LAN IP (optional):** Please use `docker:start:local-ip` or `docker:start:seed:local-ip` only if you would like to scan table QR codes from a phone on the same Wi‑Fi network. After switching to a local IP, run `docker compose exec backend npm run seed:admin` again so QR codes are regenerated with the updated `BASE_URL`.
+
+### Build and start
+
+```bash
+npm run docker:start:seed
+```
+
+This will:
+
+1. Ensure `.env` exists (from `.env.example` if needed) and set `BASE_URL` to localhost
+2. Build and start all containers
+3. Seed the database (admin, demo owner, restaurant, table QR codes)
+
+Wait until all three containers are healthy (`docker compose ps`).
+
+### Alternative commands
+
+| Command | Use when |
+|---------|----------|
+| `npm run docker:start` | Start without seeding |
+| `npm run docker:start:seed` | Start and seed the database (suggested for first run) |
+| `npm run docker:start:local-ip` | Start with LAN IP in `BASE_URL` |
+| `npm run docker:start:seed:local-ip` | Start + seed + LAN IP for phone QR testing |
+
+Manual seed after containers are up:
+
+```bash
+docker compose exec backend npm run seed:admin
+```
+
+Stop the stack:
+
+```bash
+docker compose down
+```
+
+Remove containers, local images, and database volume (clean reset):
+
+```bash
+docker compose down --volumes --rmi local
+```
+
+### Access the application
+
+| Service | URL |
+|---------|-----|
+| **Frontend (main UI)** | http://localhost:8080/pages/login.html |
+| Backend API (direct) | http://localhost:5001/api |
+| MongoDB (host) | localhost:27017 |
+
+The frontend Nginx container proxies `/api/*` to the backend, so the browser can use `http://localhost:8080` for both pages and API calls.
+
+### `/api/student` endpoint
+
+With Docker running, you can verify the endpoint with:
+
+```bash
+curl http://localhost:8080/api/student
+```
+
+Expected JSON:
+
+```json
+{
+  "fullName": "Ben Baiju",
+  "studentId": "S225709846"
+}
+```
+
+Same response via backend port: `http://localhost:5001/api/student`
+
+### Seeded login accounts (after `seed:admin`)
+
+| Role | Email | Password |
+|------|-------|----------|
+| Super admin | `admin@system.com` | `admin123` |
+| Demo owner | `owner@example.com` | `owner123` |
+
+These accounts can be used to verify **database-backed login** (for example, open the login page, sign in as the demo owner, and view the owner dashboard and table QR codes).
+
+### Docker layout
+
+| Path | Role |
+|------|------|
+| `docker-compose.yml` | Orchestrates mongodb, backend, frontend |
+| `backend/Dockerfile` | Multi-stage Node backend image |
+| `frontend/Dockerfile` | Nginx serves static frontend |
+| `frontend/nginx.conf` | Routes `/`, `/menu/`, `/api/`, and `/socket.io/` |
+| `docker-env.js` | Creates/updates `BASE_URL` in `.env` |
+| `.env.example` | Template for required environment variables |
+
+### Troubleshooting
+
+- **Login fails with internal error** — Check `JWT_SECRET` is set in `.env`, then restart: `docker compose up -d --force-recreate backend`
+- **QR link fails on phone** — Use `npm run docker:start:seed:local-ip`, re-run seed, ensure phone is on the same Wi‑Fi as the host
+- **Port 8080 in use** — Stop other services on 8080 or change the frontend port mapping in `docker-compose.yml`
+
+---
+
 ## Current Project Status
 
 The backend currently supports:
@@ -37,9 +188,12 @@ The backend currently supports:
 
 - `backend/`: API server and database layer
 - `frontend/`: static pages and UI components
+- `docker-compose.yml`, `docker-env.js`, `.env.example`: Docker deployment
 - `docs/`: SRS and team documentation
 
-## Local Setup
+## Local Setup (without Docker)
+
+For development without containers, use a local MongoDB instance and environment variables under `backend/`. **To run the containerised version of this application, please follow the Docker section above.**
 
 1. Clone and open project:
 ```bash

@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "SIT725 QR-Based Restaurant Menu Web Application",
   "scripts": {
+    "docker:start": "node docker-env.js && docker compose up --build",
+    "docker:start:local-ip": "node docker-env.js --local-ip && docker compose up --build",
+    "docker:start:seed": "node docker-env.js && docker compose up --build -d && docker compose exec backend npm run seed:admin",
+    "docker:start:seed:local-ip": "node docker-env.js --local-ip && docker compose up --build -d && docker compose exec backend npm run seed:admin",
     "test": "mocha 'test/unit/**/*.test.js' --exit --timeout 10000",
     "test:integration": "mocha 'test/integration/**/*.integration.test.js' --require test/integration/hooks.js --exit --timeout 20000",
     "test:all": "mocha 'test/unit/**/*.test.js' 'test/integration/**/*.integration.test.js' --require test/integration/hooks.js --exit --timeout 20000",
