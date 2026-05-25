@@ -2,7 +2,7 @@
 
 QR-based restaurant menu web application for SIT725.
 
-## Docker Deployment (Primary — SIT725 8.2HD)
+## Docker Deployment
 
 This repository is containerised with Docker Compose. The full application runs end-to-end: **frontend (Nginx)**, **backend (Node/Express)**, and **MongoDB**.
 
@@ -10,6 +10,18 @@ This repository is containerised with Docker Compose. The full application runs 
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine + Docker Compose v2)
 - Node.js 18+ (only needed to run the helper script `docker-env.js` before Compose starts)
+- Git (to clone this repository)
+
+### Get the project
+
+Clone the repository and open the project folder:
+
+```bash
+git clone <https://github.com/benbaiju/SIT725_QR_APP.git>
+cd SIT725_QR_APP
+```
+
+All commands below are run from the **repository root**.
 
 ### Configuration
 
@@ -29,18 +41,21 @@ cp .env.example .env
 | `JWT_SECRET` | Signs login tokens — **you must set this** |
 | `BASE_URL` | Host used when generating table QR codes (see below) |
 
-`docker-env.js` only updates `BASE_URL` in `.env` (it does not overwrite `JWT_SECRET` or `MONGO_URI`). If `.env` is missing, the script creates it from `.env.example`.
+`docker-env.js` behaves in two steps:
+
+1. **If `.env` does not exist** — it copies `.env.example` to `.env`, so all required variables (`NODE_ENV`, `MONGO_URI`, `JWT_SECRET`, `BASE_URL`) are present.
+2. **If `.env` already exists** — it updates **only** the `BASE_URL` line and leaves `JWT_SECRET`, `MONGO_URI`, and `NODE_ENV` unchanged.
+
+You should still set `JWT_SECRET` in `.env` before logging in (the value from `.env.example` is a placeholder until you replace it).
 
 - Default `BASE_URL`: `http://localhost:8080` (browser on the same machine)
 - With `--local-ip`: your LAN IP, e.g. `http://192.168.0.79:8080` (QR scanning from a phone on the same Wi‑Fi)
 
-**localhost only (recommended for markers):** If you only need to run and test the app on the same computer, use the default commands below (`docker:start` or `docker:start:seed`). You do **not** need the `:local-ip` scripts.
+**Using localhost only:** If you plan to run and test the application on the same computer, please use the default commands below (`docker:start` or `docker:start:seed`). The `:local-ip` scripts are not required in that case.
 
-**LAN IP (optional):** Only use `docker:start:local-ip` or `docker:start:seed:local-ip` if you want to scan table QR codes from a phone on the same Wi‑Fi. After switching to local IP, run `docker compose exec backend npm run seed:admin` again so QR codes embed the new `BASE_URL`.
+**Using your LAN IP (optional):** Please use `docker:start:local-ip` or `docker:start:seed:local-ip` only if you would like to scan table QR codes from a phone on the same Wi‑Fi network. After switching to a local IP, run `docker compose exec backend npm run seed:admin` again so QR codes are regenerated with the updated `BASE_URL`.
 
-### Build and start (recommended for markers)
-
-From the **repository root**:
+### Build and start
 
 ```bash
 npm run docker:start:seed
@@ -59,7 +74,7 @@ Wait until all three containers are healthy (`docker compose ps`).
 | Command | Use when |
 |---------|----------|
 | `npm run docker:start` | Start without seeding |
-| `npm run docker:start:seed` | Start + seed (recommended first run) |
+| `npm run docker:start:seed` | Start and seed the database (suggested for first run) |
 | `npm run docker:start:local-ip` | Start with LAN IP in `BASE_URL` |
 | `npm run docker:start:seed:local-ip` | Start + seed + LAN IP for phone QR testing |
 
@@ -91,9 +106,9 @@ docker compose down --volumes --rmi local
 
 The frontend Nginx container proxies `/api/*` to the backend, so the browser can use `http://localhost:8080` for both pages and API calls.
 
-### `/api/student` endpoint (HD requirement)
+### `/api/student` endpoint
 
-With Docker running, verify:
+With Docker running, you can verify the endpoint with:
 
 ```bash
 curl http://localhost:8080/api/student
@@ -117,7 +132,7 @@ Same response via backend port: `http://localhost:5001/api/student`
 | Super admin | `admin@system.com` | `admin123` |
 | Demo owner | `owner@example.com` | `owner123` |
 
-Use these to confirm **database-backed login** (e.g. open the login page, sign in as owner, view owner dashboard and table QR codes).
+These accounts can be used to verify **database-backed login** (for example, open the login page, sign in as the demo owner, and view the owner dashboard and table QR codes).
 
 ### Docker layout
 
@@ -126,7 +141,7 @@ Use these to confirm **database-backed login** (e.g. open the login page, sign i
 | `docker-compose.yml` | Orchestrates mongodb, backend, frontend |
 | `backend/Dockerfile` | Multi-stage Node backend image |
 | `frontend/Dockerfile` | Nginx serves static frontend |
-| `frontend/nginx.conf` | Routes `/`, `/menu/`, `/api/` |
+| `frontend/nginx.conf` | Routes `/`, `/menu/`, `/api/`, and `/socket.io/` |
 | `docker-env.js` | Creates/updates `BASE_URL` in `.env` |
 | `.env.example` | Template for required environment variables |
 
@@ -178,7 +193,7 @@ The backend currently supports:
 
 ## Local Setup (without Docker)
 
-For development without containers, use a local MongoDB instance and environment variables under `backend/`. **Markers assessing the 8.2HD Docker task should use the Docker section above only.**
+For development without containers, use a local MongoDB instance and environment variables under `backend/`. **To run the containerised version of this application, please follow the Docker section above.**
 
 1. Clone and open project:
 ```bash
